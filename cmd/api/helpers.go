@@ -46,10 +46,7 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data interf
 	// Adding Content-Type and status code to header and response as json
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_, err = w.Write(js)
-	if err != nil {
-		return err
-	}
+	w.Write(js)
 	return nil
 }
 
@@ -82,4 +79,24 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst int
 	}
 
 	return nil
+}
+
+// The background() helper accepts an arbitrary function as a parameter.
+func (app *application) background(fn func()) {
+
+	// increment go routine quantity each time background method is called
+	app.wg.Add(1)
+	// Launch a background goroutine.
+	go func() {
+		// decrease value of goroutines before this goroutine is finished
+		app.wg.Done()
+		// Recover any panic.
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.PrintError(fmt.Errorf("%s", err), nil)
+			}
+		}()
+		// Execute the arbitrary function that we passed as the parameter.
+		fn()
+	}()
 }

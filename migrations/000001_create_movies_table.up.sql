@@ -11,4 +11,3 @@ CREATE TABLE IF NOT EXISTS movies (
     genres text[] not NULL,
     version integer NOT NULL DEFAULT 1
 );
-

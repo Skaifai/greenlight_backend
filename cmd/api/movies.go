@@ -3,8 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/shynggys9219/greenlight/internal/data"
 	"net/http"
+
+	"github.com/shyngys9219/greenlight/internal/data"
 )
 
 // Add a createMovieHandler for the "POST /v1/movies" endpoint.
@@ -47,19 +48,18 @@ func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
-	// // Dump the contents of the input struct in HTTP response.
+	// // Dump the contents of the input struct in a HTTP response.
 	// fmt.Fprintf(w, "%+v\n", input) //+v here is adding the field name of a value // https://pkg.go.dev/fmt
 }
 
+// Add a showMovieHandler for the "GET /v1/movies/:id" endpoint.
+// TO-DO: Change this handler to retrieve data from a real db
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
 		app.notFoundResponse(w, r)
-		return
 	}
-	// Call the Get() method to fetch the data for a specific movie. We also need to
-	// use the errors.Is() function to check if it returns a data.ErrRecordNotFound
-	// error, in which case we send a 404 Not Found response to the client.
+
 	movie, err := app.models.Movies.Get(id)
 	if err != nil {
 		switch {
@@ -70,12 +70,41 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		}
 		return
 	}
+	// Encode the struct to JSON and send it as the HTTP response.
+	// using envelope
 	err = app.writeJSON(w, http.StatusOK, envelope{"movie": movie}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
 }
 
+// TO-DO: Erase existing data by id
+func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := app.readIDParam(r)
+	if err != nil {
+		app.notFoundResponse(w, r)
+		return
+	}
+
+	err = app.models.Movies.Delete(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			app.notFoundResponse(w, r)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+
+}
+
+// TO-DO: Update existing movie
 func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
 	if err != nil {
@@ -103,7 +132,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	err = app.readJSON(w, r, &input)
 	if err != nil {
-		app.badRequestResponse(w, r, err)
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
@@ -122,30 +151,5 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
-}
 
-func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
-	id, err := app.readIDParam(r)
-
-	if err != nil {
-		app.notFoundResponse(w, r)
-		return
-	}
-
-	err = app.models.Movies.Delete(id)
-	if err != nil {
-		switch {
-		case errors.Is(err, data.ErrRecordNotFound):
-			app.notFoundResponse(w, r)
-		default:
-			app.serverErrorResponse(w, r, err)
-		}
-		return
-	}
-
-	// Return a 200 OK status code along with a success message.
-	err = app.writeJSON(w, http.StatusOK, envelope{"message": "movie successfully deleted"}, nil)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
 }
